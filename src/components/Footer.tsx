@@ -103,17 +103,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick }) => {
             </ul>
           </div>
 
-          {/* MCP & Developer */}
+          {/* Integrations */}
           <div className="space-y-2">
-            <h5 className="font-bold uppercase tracking-wider text-slate-300">API & MCP Connectivity</h5>
+            <h5 className="font-bold uppercase tracking-wider text-slate-300">Integrations</h5>
             <p className="text-slate-400 leading-relaxed">
               Built for integrations with Whoop, Garmin, Apple Health, and external sports booking bots.
             </p>
             <button
-              onClick={() => onNavClick('mcp')}
+              onClick={() => onNavClick('book')}
               className="inline-flex items-center gap-1.5 text-emerald-400 font-bold hover:underline cursor-pointer"
             >
-              <span>Explore MCP Tool Schema</span>
+              <span>Set up an auto-booking bot</span>
               <span>→</span>
             </button>
           </div>

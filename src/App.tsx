@@ -8,7 +8,6 @@ import { LockerSimulatorModal } from './components/LockerSimulatorModal';
 import { PodLocator } from './components/PodLocator';
 import { MealScanner } from './components/MealScanner';
 import { RecoveryCalculator } from './components/RecoveryCalculator';
-import { McpConsole } from './components/McpConsole';
 import { CartDrawer } from './components/CartDrawer';
 import { Footer } from './components/Footer';
 import { PerformancePointsView } from './components/PerformancePointsView';
@@ -450,8 +449,6 @@ export default function App() {
             />
           )}
 
-          {/* Tab 7: Extensible MCP & API Engine */}
-          {activeTab === 'mcp' && <McpConsole />}
         </div>
 
         {/* Cart Drawer */}

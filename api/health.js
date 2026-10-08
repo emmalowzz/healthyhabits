@@ -1,76 +1,38 @@
-const SMITHERY_ENDPOINT = 'https://mcp.smithery.ai/emmalowzz';
+import { rejectMethod, sendJson } from './_lib/http.js';
+import { MEALS_DATABASE } from './_lib/meals-data.js';
+import { PODS_DATABASE } from './_lib/pods-data.js';
+
+const SERVICE_VERSION = '1.1.0';
 
 /**
  * GET /api/health
- * Health check monitor for Kinetic Fuel APIs and external Smithery MCP connection.
- *
- * Exported as a plain (req, res) handler rather than an Express Router so it works
- * both when mounted by server.ts and when a host (e.g. Vercel) invokes api/health.js
- * directly as a serverless function. A Router invoked without `next` crashes with
- * "Cannot read properties of undefined (reading 'apply')".
+ * Liveness check for the Kinetic Fuel API. It only checks things this server
+ * owns, with no outbound network calls, so it answers fast and its status
+ * reflects this service rather than a third party.
  */
-export default async function healthHandler(req, res) {
-  if (req.method && req.method !== 'GET' && req.method !== 'HEAD') {
-    return sendJson(res, 405, { status: 'error', message: 'Method not allowed' });
-  }
-
+export default function healthHandler(req, res) {
+  if (rejectMethod(req, res, ['GET'])) return;
 
   const startTime = Date.now();
-  let mcpStatus = {
-    endpoint: SMITHERY_ENDPOINT,
-    reachable: false,
-    latencyMs: null,
-    httpStatus: null,
-    message: null,
-    authRequired: true
+  const checks = {
+    mealsCatalog: MEALS_DATABASE.length > 0 ? 'ok' : 'empty',
+    podsNetwork: PODS_DATABASE.length > 0 ? 'ok' : 'empty'
   };
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-    
-    const pingStart = Date.now();
-    // Test Smithery MCP endpoint with options/post
-    const response = await fetch(SMITHERY_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 'health-ping', method: 'ping' }),
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const pingDuration = Date.now() - pingStart;
-    mcpStatus.reachable = true;
-    mcpStatus.latencyMs = pingDuration;
-    mcpStatus.httpStatus = response.status;
-
-    if (response.status === 200) {
-      mcpStatus.message = 'Smithery MCP gateway fully connected and operational';
-      mcpStatus.authRequired = false;
-    } else if (response.status === 401 || response.status === 403) {
-      mcpStatus.message = 'Smithery MCP gateway online and responsive (Bearer authentication protected)';
-      mcpStatus.authRequired = true;
-    } else {
-      mcpStatus.message = `Smithery MCP gateway responded with HTTP ${response.status}`;
-    }
-  } catch (error) {
-    mcpStatus.reachable = false;
-    mcpStatus.message = error.name === 'AbortError' 
-      ? 'Smithery MCP gateway ping timed out' 
-      : `Connection error: ${error.message}`;
-  }
+  const healthy = Object.values(checks).every((c) => c === 'ok');
 
   const memoryUsage = process.memoryUsage();
   const uptimeSeconds = Math.floor(process.uptime());
 
-  const healthPayload = {
-    status: 'ok',
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  return sendJson(res, healthy ? 200 : 503, {
+    status: healthy ? 'ok' : 'degraded',
     service: 'Kinetic Fuel API Server',
-    version: '1.0.0',
+    version: SERVICE_VERSION,
     timestamp: new Date().toISOString(),
     responseDurationMs: Date.now() - startTime,
     uptimeSeconds,
     uptimeHuman: formatUptime(uptimeSeconds),
+    checks,
     system: {
       platform: process.platform,
       nodeVersion: process.version,
@@ -79,29 +41,8 @@ export default async function healthHandler(req, res) {
         heapUsedMb: Math.round(memoryUsage.heapUsed / 1024 / 1024),
         heapTotalMb: Math.round(memoryUsage.heapTotal / 1024 / 1024)
       }
-    },
-    integrations: {
-      smitheryMcp: mcpStatus
-    },
-    endpoints: [
-      { path: '/api/health', method: 'GET', description: 'API health and MCP gateway monitoring' },
-      { path: '/api/mcp', method: 'GET', description: 'Smithery MCP status and configuration' },
-      { path: '/api/mcp', method: 'POST', description: 'JSON-RPC dispatch to Smithery MCP /emmalowzz' },
-      { path: '/api/mcp/tools', method: 'GET', description: 'Available MCP tools catalog' },
-      { path: '/api/meals', method: 'GET', description: 'Sports recovery meals catalog' },
-      { path: '/api/pods', method: 'GET', description: 'ActiveSG smart locker pod telemetry' }
-    ]
-  };
-
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  return sendJson(res, 200, healthPayload);
-}
-
-// Uses only core Node http APIs so it doesn't depend on Express/Vercel response helpers
-function sendJson(res, statusCode, body) {
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.end(JSON.stringify(body));
+    }
+  });
 }
 
 function formatUptime(seconds) {
@@ -111,4 +52,3 @@ function formatUptime(seconds) {
   const s = seconds % 60;
   return `${d}d ${h}h ${m}m ${s}s`;
 }
-

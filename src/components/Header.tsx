@@ -11,7 +11,6 @@ import {
   ChevronDown,
   Camera,
   Calculator,
-  Terminal,
   ShieldCheck,
   Smartphone,
   Monitor,
@@ -223,18 +222,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Calculator className="w-3.5 h-3.5 text-orange-600" />
             Planner
-          </button>
-
-          <button
-            onClick={() => setActiveTab('mcp')}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
-              activeTab === 'mcp'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-            MCP
           </button>
         </nav>
 

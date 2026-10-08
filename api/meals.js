@@ -1,97 +1,10 @@
-import { Router } from 'express';
+import { getQuery, rejectMethod, sendJson } from './_lib/http.js';
+import { MEALS_DATABASE } from './_lib/meals-data.js';
 
-const router = Router();
-
-const MEALS_DATABASE = [
-  {
-    id: 'meal-salmon-quinoa',
-    name: 'Wild Salmon & Tri-Color Quinoa Bowl',
-    tagline: 'High Omega-3 Recovery · Turmeric Steamed Greens',
-    category: 'anti-inflammatory',
-    price: 14.80,
-    calories: 520,
-    protein: 42,
-    carbs: 46,
-    fat: 18,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Within 45m post-workout'
-  },
-  {
-    id: 'meal-sirloin-mash',
-    name: 'Grass-Fed Sirloin & Roasted Sweet Potato',
-    tagline: '52g High-Bioavailability Protein · Asparagus & Garlic Thyme Jus',
-    category: 'high-protein',
-    price: 15.90,
-    calories: 590,
-    protein: 52,
-    carbs: 48,
-    fat: 19,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Within 60m post-strength training'
-  },
-  {
-    id: 'meal-miso-chicken',
-    name: 'Kyoto Miso Glazed Chicken & Soba',
-    tagline: 'Buckwheat Glycogen Refuel · Bok Choy & Shiitake Mushroom',
-    category: 'glycogen-refuel',
-    price: 13.50,
-    calories: 490,
-    protein: 44,
-    carbs: 54,
-    fat: 11,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Post-cardio or endurance sessions'
-  },
-  {
-    id: 'meal-tempeh-power',
-    name: 'Spiced Tempeh & Golden Chickpea Bowl',
-    tagline: '100% Botanical Performance · Tahini Lemon Dressing',
-    category: 'plant-power',
-    price: 12.80,
-    calories: 460,
-    protein: 36,
-    carbs: 52,
-    fat: 14,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Anytime post-session or clean dinner'
-  },
-  {
-    id: 'meal-barramundi-cauli',
-    name: 'Singapore Barramundi & Garlic Cauli-Mash',
-    tagline: 'Ultra-Lean 380 KCAL · 46g Protein · Low Sodium HPB',
-    category: 'lean-cut',
-    price: 15.20,
-    calories: 380,
-    protein: 46,
-    carbs: 18,
-    fat: 12,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Cut phase / Late-night training meal'
-  },
-  {
-    id: 'meal-peri-chicken',
-    name: 'Flame Peri-Peri Chicken & Turmeric Brown Rice',
-    tagline: '48g Protein · Roasted Zucchini & Capsicum',
-    category: 'high-protein',
-    price: 13.90,
-    calories: 540,
-    protein: 48,
-    carbs: 52,
-    fat: 14,
-    hpbCertified: true,
-    sfaCertified: true,
-    recoveryWindow: 'Within 60m post-training'
-  }
-];
-
-// GET /api/meals
-router.get('/', (req, res) => {
-  const { category, min_protein } = req.query;
+// GET /api/meals?category=&min_protein=
+export default function mealsHandler(req, res) {
+  if (rejectMethod(req, res, ['GET'])) return;
+  const { category, min_protein } = getQuery(req);
   let results = [...MEALS_DATABASE];
 
   if (category && category !== 'all') {
@@ -101,20 +14,5 @@ router.get('/', (req, res) => {
     results = results.filter((m) => m.protein >= Number(min_protein));
   }
 
-  res.json({
-    status: 'ok',
-    count: results.length,
-    meals: results
-  });
-});
-
-// GET /api/meals/:id
-router.get('/:id', (req, res) => {
-  const meal = MEALS_DATABASE.find((m) => m.id === req.params.id);
-  if (!meal) {
-    return res.status(404).json({ error: 'Meal not found' });
-  }
-  res.json({ status: 'ok', meal });
-});
-
-export default router;
+  return sendJson(res, 200, { status: 'ok', count: results.length, meals: results });
+}
