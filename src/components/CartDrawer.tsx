@@ -27,6 +27,7 @@ interface CartDrawerProps {
   appliedVoucher: string | null;
   onApplyVoucher: (code: string) => void;
   onCheckout: () => void;
+  isMember?: boolean;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -40,7 +41,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onSelectPod,
   appliedVoucher,
   onApplyVoucher,
-  onCheckout
+  onCheckout,
+  isMember = false
 }) => {
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherError, setVoucherError] = useState('');
@@ -57,7 +59,9 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   else if (appliedVoucher === 'ACTIVESG50') discountRate = 0.5; // 50% off
 
   const discountAmount = rawSubtotal * discountRate;
-  const netTotal = Math.max(0, rawSubtotal - discountAmount);
+  // Kinetic+ members get 10% off what remains after any voucher
+  const memberDiscountAmount = isMember ? (rawSubtotal - discountAmount) * 0.1 : 0;
+  const netTotal = Math.max(0, rawSubtotal - discountAmount - memberDiscountAmount);
 
   const handleApplyVoucherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,6 +268,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 <div className="flex justify-between text-[#006948] font-bold">
                   <span>Promotion Discount:</span>
                   <span>-S${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {memberDiscountAmount > 0 && (
+                <div className="flex justify-between text-amber-700 font-bold">
+                  <span>Kinetic+ Member 10%:</span>
+                  <span>-S${memberDiscountAmount.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-200">

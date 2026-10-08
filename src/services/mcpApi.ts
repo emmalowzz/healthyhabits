@@ -100,11 +100,16 @@ export const KINETIC_MCP_TOOLS: McpToolDefinition[] = [
 
 export async function checkApiHealth(): Promise<any> {
   try {
-    const res = await fetch('/api/health');
-    if (res.ok) {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       return await res.json();
     }
-    return { status: 'error', code: res.status, message: 'Health check returned non-200' };
+    if (res.ok) {
+      // Static hosts often answer unknown routes with index.html, which looks like a 200
+      return { status: 'error', code: res.status, message: '/api/health returned HTML instead of JSON. The API server is not running behind this host.' };
+    }
+    return { status: 'error', code: res.status, message: `Health check returned HTTP ${res.status}` };
   } catch (err: any) {
     return { status: 'offline', message: err.message };
   }

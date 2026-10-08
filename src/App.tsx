@@ -13,6 +13,9 @@ import { CartDrawer } from './components/CartDrawer';
 import { Footer } from './components/Footer';
 import { PerformancePointsView } from './components/PerformancePointsView';
 import { MobileAppShell } from './components/MobileAppShell';
+import { SportsBooking } from './components/SportsBooking';
+import { Membership } from './components/Membership';
+import { SPORTS_VENUES, nextDateForWeekday, slotsRemaining } from './data/sportsData';
 import { MEALS_DATA, POD_LOCATIONS } from './data/mockData';
 import { 
   INITIAL_BADGES, 
@@ -26,7 +29,10 @@ import {
   CartItem, 
   UserPerformanceProfile, 
   PerformanceBadge, 
-  PerformanceReward 
+  PerformanceReward,
+  SportsBooking as SportsBookingType,
+  AutoBookingRule,
+  NutritionistMessage
 } from './types';
 import confetti from 'canvas-confetti';
 
@@ -51,6 +57,20 @@ export default function App() {
   const [badges, setBadges] = useState<PerformanceBadge[]>(INITIAL_BADGES);
   const [rewards, setRewards] = useState<PerformanceReward[]>(INITIAL_REWARDS);
   const [streakAwardToast, setStreakAwardToast] = useState<{ message: string; points: number } | null>(null);
+
+  // Sports booking, auto-booking bots & membership state
+  const [sportsBookings, setSportsBookings] = useState<SportsBookingType[]>([]);
+  const [autoRules, setAutoRules] = useState<AutoBookingRule[]>([]);
+  const [isMember, setIsMember] = useState(false);
+  const [referralCount, setReferralCount] = useState(0);
+  const [nutritionistMessages, setNutritionistMessages] = useState<NutritionistMessage[]>([
+    {
+      id: 'msg-welcome',
+      from: 'nutritionist',
+      text: "Hi! I'm Samantha, your board-certified sports nutritionist. Tell me about your training this week and I'll help plan your recovery meals.",
+      sentAt: 'Today'
+    }
+  ]);
 
   // Locker Simulator Modal state
   const [lockerModalState, setLockerModalState] = useState<{
@@ -206,6 +226,69 @@ export default function App() {
     });
   };
 
+  const newId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const handleBookSession = (booking: Omit<SportsBookingType, 'id'>) => {
+    setSportsBookings((prev) => [...prev, { ...booking, id: newId('bk') }]);
+  };
+
+  const handleCancelSession = (bookingId: string) => {
+    setSportsBookings((prev) => prev.filter((b) => b.id !== bookingId));
+  };
+
+  const handleAddMealPickup = (bookingId: string, meal: Meal) => {
+    const booking = sportsBookings.find((b) => b.id === bookingId);
+    const venue = SPORTS_VENUES.find((v) => v.id === booking?.venueId);
+    const pod = POD_LOCATIONS.find((p) => p.id === venue?.linkedPodId) || selectedPod;
+    setSportsBookings((prev) =>
+      prev.map((b) => (b.id === bookingId ? { ...b, mealPickupMealId: meal.id } : b))
+    );
+    awardOrderPoints(meal);
+    setLockerModalState({ isOpen: true, meal, pod, temperature: globalTemp });
+  };
+
+  // The bot books the next occurrence straight away if a slot is open, otherwise it waits
+  const runAutoBot = (rule: AutoBookingRule): AutoBookingRule => {
+    if (!rule.enabled) return rule;
+    const dateIso = nextDateForWeekday(rule.weekday);
+    if (slotsRemaining(rule.venueId, rule.activity, dateIso, rule.time) === 0) {
+      return { ...rule, lastBookedDateIso: undefined };
+    }
+    setSportsBookings((prev) =>
+      prev.some((b) => b.venueId === rule.venueId && b.activity === rule.activity && b.dateIso === dateIso && b.time === rule.time)
+        ? prev
+        : [...prev, { id: newId('bk'), venueId: rule.venueId, activity: rule.activity, dateIso, time: rule.time, createdBy: 'autobot' }]
+    );
+    return { ...rule, lastBookedDateIso: dateIso };
+  };
+
+  const handleAddAutoRule = (rule: Omit<AutoBookingRule, 'id' | 'enabled'>) => {
+    const created = runAutoBot({ ...rule, id: newId('bot'), enabled: true });
+    setAutoRules((prev) => [...prev, created]);
+  };
+
+  const handleToggleAutoRule = (ruleId: string) => {
+    const rule = autoRules.find((r) => r.id === ruleId);
+    if (!rule) return;
+    const toggled = rule.enabled ? { ...rule, enabled: false } : runAutoBot({ ...rule, enabled: true });
+    setAutoRules((prev) => prev.map((r) => (r.id === ruleId ? toggled : r)));
+  };
+
+  const handleDeleteAutoRule = (ruleId: string) => {
+    setAutoRules((prev) => prev.filter((r) => r.id !== ruleId));
+  };
+
+  const handleSendNutritionistMessage = (text: string) => {
+    const now = new Date().toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' });
+    setNutritionistMessages((prev) => [...prev, { id: newId('msg'), from: 'user', text, sentAt: now }]);
+    setTimeout(() => {
+      setNutritionistMessages((prev) => [
+        ...prev,
+        { id: newId('msg'), from: 'nutritionist', text: nutritionistReply(text), sentAt: now }
+      ]);
+    }, 900);
+  };
+
   const handleRedeemReward = (reward: PerformanceReward) => {
     if (userProfile.totalPoints < reward.costPoints) return;
 
@@ -337,6 +420,36 @@ export default function App() {
             />
           )}
 
+          {/* Tab: Sports court & activity booking with auto-booking bots */}
+          {activeTab === 'book' && (
+            <SportsBooking
+              bookings={sportsBookings}
+              onBook={handleBookSession}
+              onCancelBooking={handleCancelSession}
+              onAddMealPickup={handleAddMealPickup}
+              autoRules={autoRules}
+              onAddAutoRule={handleAddAutoRule}
+              onToggleAutoRule={handleToggleAutoRule}
+              onDeleteAutoRule={handleDeleteAutoRule}
+              isMember={isMember}
+              onOpenMembership={() => setActiveTab('membership')}
+            />
+          )}
+
+          {/* Tab: Kinetic+ membership, referrals, monthly summary, nutritionist chat */}
+          {activeTab === 'membership' && (
+            <Membership
+              isMember={isMember}
+              onToggleMembership={() => setIsMember((m) => !m)}
+              userProfile={userProfile}
+              bookings={sportsBookings}
+              referralCount={referralCount}
+              onSimulateReferral={() => setReferralCount((c) => c + 1)}
+              messages={nutritionistMessages}
+              onSendMessage={handleSendNutritionistMessage}
+            />
+          )}
+
           {/* Tab 7: Extensible MCP & API Engine */}
           {activeTab === 'mcp' && <McpConsole />}
         </div>
@@ -354,6 +467,7 @@ export default function App() {
           appliedVoucher={appliedVoucher}
           onApplyVoucher={handleApplyVoucher}
           onCheckout={handleCheckout}
+          isMember={isMember}
         />
 
         {/* Meal Detail Nutritional Matrix Modal */}
@@ -389,4 +503,22 @@ export default function App() {
       </div>
     </MobileAppShell>
   );
+}
+
+// Canned demo replies until a real nutritionist messaging backend is connected
+function nutritionistReply(text: string): string {
+  const t = text.toLowerCase();
+  if (/(cut|lose|weight|fat)/.test(t)) {
+    return 'For a cut, keep protein high (around 2g/kg) and pick lean meals like the Barramundi & Cauli-Mash. Avoid skipping the post-session meal; that is when muscle loss creeps in.';
+  }
+  if (/(marathon|run|race|endurance|cycling|swim)/.test(t)) {
+    return 'For endurance sessions, refuel carbohydrates within 45 minutes. The Miso Chicken & Soba or Salmon Quinoa bowl give you a good 3:1 carb-to-protein ratio.';
+  }
+  if (/(muscle|strength|gym|lift|protein)/.test(t)) {
+    return 'After strength work aim for 30-50g protein with some carbs. The Sirloin & Sweet Potato (52g protein) is ideal within an hour of training.';
+  }
+  if (/(senior|knee|joint|elderly|old)/.test(t)) {
+    return 'For joint health, prioritise omega-3s and anti-inflammatory foods. The Salmon & Quinoa bowl with turmeric greens is a gentle, balanced option.';
+  }
+  return 'Thanks for sharing! Tell me your sport, how often you train and your goal (performance, weight, recovery) and I will suggest a weekly meal plan.';
 }

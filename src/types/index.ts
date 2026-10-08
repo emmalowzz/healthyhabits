@@ -137,3 +137,47 @@ export interface UserPerformanceProfile {
   unlockedBadgeIds: string[];
   claimedRewardCodes: string[];
 }
+
+export type SportActivity =
+  | 'Badminton'
+  | 'Tennis'
+  | 'Swimming'
+  | 'Gym'
+  | 'Basketball'
+  | 'Futsal';
+
+export interface SportsVenue {
+  id: string;
+  name: string;
+  zone: PodLocation['zone'];
+  activities: SportActivity[];
+  linkedPodId?: string; // Smart pod on site for post-session meal pickup
+  pricePerSlotSgd: number;
+}
+
+export interface SportsBooking {
+  id: string;
+  venueId: string;
+  activity: SportActivity;
+  dateIso: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  createdBy: 'manual' | 'autobot';
+  mealPickupMealId?: string;
+}
+
+export interface AutoBookingRule {
+  id: string;
+  venueId: string;
+  activity: SportActivity;
+  weekday: number; // 0 = Sunday
+  time: string; // HH:MM
+  enabled: boolean;
+  lastBookedDateIso?: string;
+}
+
+export interface NutritionistMessage {
+  id: string;
+  from: 'user' | 'nutritionist';
+  text: string;
+  sentAt: string;
+}

@@ -44,6 +44,8 @@ export const McpConsole: React.FC = () => {
 
   useEffect(() => {
     runProbe();
+    const interval = setInterval(runProbe, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const runProbe = async () => {
@@ -158,23 +160,42 @@ export const McpConsole: React.FC = () => {
               <Activity className="w-4 h-4 text-emerald-600" />
               <span>/api/health Monitor</span>
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold">
-              {healthData?.status === 'ok' ? 'HEALTHY 200' : 'CHECKING...'}
+            <span
+              className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-extrabold ${
+                !healthData
+                  ? 'bg-slate-100 text-slate-600'
+                  : healthData.status === 'ok'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-rose-100 text-rose-800'
+              }`}
+            >
+              {!healthData
+                ? 'CHECKING...'
+                : healthData.status === 'ok'
+                ? 'HEALTHY 200'
+                : healthData.status === 'offline'
+                ? 'OFFLINE'
+                : `DOWN ${healthData.code ?? ''}`.trim()}
             </span>
           </div>
           <div className="text-xs text-slate-500 space-y-1">
             <div className="flex justify-between">
               <span>Server Uptime:</span>
-              <strong className="text-slate-800 font-mono">{healthData?.uptimeHuman || 'Calculating...'}</strong>
+              <strong className="text-slate-800 font-mono">{healthData?.uptimeHuman || (healthData ? '—' : 'Calculating...')}</strong>
             </div>
             <div className="flex justify-between">
               <span>Response Latency:</span>
-              <strong className="text-emerald-700 font-mono">{healthData?.responseDurationMs ? `${healthData.responseDurationMs} ms` : '12 ms'}</strong>
+              <strong className="text-emerald-700 font-mono">{healthData?.responseDurationMs != null ? `${healthData.responseDurationMs} ms` : '—'}</strong>
             </div>
             <div className="flex justify-between">
               <span>Memory Heap:</span>
-              <strong className="text-slate-800 font-mono">{healthData?.system?.memory?.heapUsedMb ? `${healthData.system.memory.heapUsedMb} MB` : '18 MB'}</strong>
+              <strong className="text-slate-800 font-mono">{healthData?.system?.memory?.heapUsedMb != null ? `${healthData.system.memory.heapUsedMb} MB` : '—'}</strong>
             </div>
+            {healthData && healthData.status !== 'ok' && (
+              <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-2 py-1">
+                {healthData.message}
+              </div>
+            )}
           </div>
         </div>
 

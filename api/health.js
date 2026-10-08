@@ -1,13 +1,20 @@
-import { Router } from 'express';
-
-const router = Router();
 const SMITHERY_ENDPOINT = 'https://mcp.smithery.ai/emmalowzz';
 
 /**
  * GET /api/health
- * Health check monitor for Kinetic Fuel APIs and external Smithery MCP connection
+ * Health check monitor for Kinetic Fuel APIs and external Smithery MCP connection.
+ *
+ * Exported as a plain (req, res) handler rather than an Express Router so it works
+ * both when mounted by server.ts and when a host (e.g. Vercel) invokes api/health.js
+ * directly as a serverless function. A Router invoked without `next` crashes with
+ * "Cannot read properties of undefined (reading 'apply')".
  */
-router.get('/', async (req, res) => {
+export default async function healthHandler(req, res) {
+  if (req.method && req.method !== 'GET' && req.method !== 'HEAD') {
+    return sendJson(res, 405, { status: 'error', message: 'Method not allowed' });
+  }
+
+
   const startTime = Date.now();
   let mcpStatus = {
     endpoint: SMITHERY_ENDPOINT,
@@ -40,7 +47,7 @@ router.get('/', async (req, res) => {
     if (response.status === 200) {
       mcpStatus.message = 'Smithery MCP gateway fully connected and operational';
       mcpStatus.authRequired = false;
-    } else if (response.status === 401) {
+    } else if (response.status === 401 || response.status === 403) {
       mcpStatus.message = 'Smithery MCP gateway online and responsive (Bearer authentication protected)';
       mcpStatus.authRequired = true;
     } else {
@@ -87,8 +94,15 @@ router.get('/', async (req, res) => {
   };
 
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  return res.status(200).json(healthPayload);
-});
+  return sendJson(res, 200, healthPayload);
+}
+
+// Uses only core Node http APIs so it doesn't depend on Express/Vercel response helpers
+function sendJson(res, statusCode, body) {
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
+}
 
 function formatUptime(seconds) {
   const d = Math.floor(seconds / (3600 * 24));
@@ -98,4 +112,3 @@ function formatUptime(seconds) {
   return `${d}d ${h}h ${m}m ${s}s`;
 }
 
-export default router;

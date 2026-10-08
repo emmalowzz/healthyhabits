@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import healthRouter from './health.js';
+import healthHandler from './health.js';
 import mcpRouter from './mcp.js';
 import mealsRouter from './meals.js';
 import podsRouter from './pods.js';
 
 const api = Router();
 
-api.use('/health', healthRouter);
+api.get('/health', healthHandler);
 api.use('/mcp', mcpRouter);
 api.use('/meals', mealsRouter);
 api.use('/pods', podsRouter);

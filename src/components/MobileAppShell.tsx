@@ -41,12 +41,12 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
   if (!isMobileDeviceView) {
     // Standard Responsive Desktop View with Mobile Bottom Nav on small viewports
     return (
-      <div className="relative min-h-screen pb-20 lg:pb-0">
+      <div className="relative min-h-screen pb-20 xl:pb-0">
         {children}
 
         {/* Floating Cart Pill on small screens */}
         {totalCartCount > 0 && (
-          <div className="lg:hidden fixed bottom-18 left-4 right-4 z-40">
+          <div className="xl:hidden fixed bottom-18 left-4 right-4 z-40">
             <button
               onClick={openCart}
               className="w-full py-3 px-4 bg-[#006948] hover:bg-[#005137] text-white rounded-2xl shadow-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer border border-emerald-400/30"
@@ -66,7 +66,7 @@ export const MobileAppShell: React.FC<MobileAppShellProps> = ({
         )}
 
         {/* Mobile Bottom Navigation pinned for narrow viewports */}
-        <div className="lg:hidden">
+        <div className="xl:hidden">
           <MobileBottomNav
             activeTab={activeTab}
             setActiveTab={setActiveTab}

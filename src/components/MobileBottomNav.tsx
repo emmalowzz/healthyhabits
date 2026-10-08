@@ -8,7 +8,8 @@ import {
   Sparkles, 
   ShoppingBag,
   Zap,
-  Calculator
+  Calculator,
+  CalendarDays
 } from 'lucide-react';
 
 interface MobileBottomNavProps {
@@ -91,17 +92,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <span className="text-[10px] tracking-tight mt-0.5">Scanner</span>
         </button>
 
-        {/* Tab 5: Vs Cooking / Planner */}
+        {/* Tab 5: Sports booking (Vs Cooking stays reachable from the hero banner) */}
         <button
-          onClick={() => setActiveTab('why-better')}
+          onClick={() => setActiveTab('book')}
           className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer ${
-            activeTab === 'why-better'
+            activeTab === 'book'
               ? 'text-[#006948] font-extrabold'
               : 'text-slate-500 hover:text-slate-800 font-medium'
           }`}
         >
-          <Sparkles className={`w-5 h-5 ${activeTab === 'why-better' ? 'text-amber-500' : 'text-slate-500'}`} />
-          <span className="text-[10px] tracking-tight mt-0.5">Vs Cooking</span>
+          <CalendarDays className={`w-5 h-5 ${activeTab === 'book' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+          <span className="text-[10px] tracking-tight mt-0.5">Book</span>
         </button>
 
         {/* Cart Quick Button */}

@@ -15,7 +15,9 @@ import {
   ShieldCheck,
   Smartphone,
   Monitor,
-  Award
+  Award,
+  CalendarDays,
+  Crown
 } from 'lucide-react';
 import { PodLocation, DispenseTemperature, UserPerformanceProfile } from '../types';
 
@@ -67,6 +69,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-3 text-emerald-100">
+            <button
+              onClick={() => setActiveTab('membership')}
+              className="flex items-center gap-1 bg-amber-400/90 hover:bg-amber-300 px-2.5 py-0.5 rounded-full text-slate-900 font-bold transition-colors cursor-pointer"
+            >
+              <Crown className="w-3.5 h-3.5" />
+              <span>Kinetic+</span>
+            </button>
             {/* User points pill */}
             <button
               onClick={() => setActiveTab('points')}
@@ -108,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-4">
         {/* Brand */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <button 
             onClick={() => setActiveTab('meals')}
             className="flex items-center gap-2.5 text-left group cursor-pointer focus-visible:outline-emerald-600"
@@ -125,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
                   ActiveSG
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+              <p className="text-[11px] text-slate-500 font-medium hidden sm:block xl:hidden">
                 Clinical Recovery Nutrition · Smart Hot & Cold Lockers
               </p>
             </div>
@@ -133,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Center Navigation */}
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+        <nav className="hidden xl:flex min-w-0 items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
           <button
             onClick={() => setActiveTab('meals')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
@@ -166,7 +175,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            Why Better Than Cooking
+            Vs Cooking
           </button>
 
           <button
@@ -178,6 +187,18 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             Smart Pods Map
+          </button>
+
+          <button
+            onClick={() => setActiveTab('book')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+              activeTab === 'book'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-blue-600" />
+            Book
           </button>
 
           <button
@@ -218,7 +239,7 @@ export const Header: React.FC<HeaderProps> = ({
         </nav>
 
         {/* Right side controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Nearest Pod Selector */}
           <div className="relative">
             <button
@@ -274,7 +295,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Global Hot / Cold Toggle Switch */}
-          <div className="hidden md:flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <div className="hidden md:flex xl:hidden items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
               onClick={() => setGlobalTemp('hot')}
               className={`px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${

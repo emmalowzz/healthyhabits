@@ -78,6 +78,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavClick }) => {
                   Recovery Macro Planner
                 </button>
               </li>
+              <li>
+                <button onClick={() => onNavClick('book')} className="hover:text-emerald-400 transition-colors cursor-pointer">
+                  Book Courts &amp; Activities
+                </button>
+              </li>
+              <li>
+                <button onClick={() => onNavClick('membership')} className="hover:text-emerald-400 transition-colors cursor-pointer">
+                  Kinetic+ Membership
+                </button>
+              </li>
             </ul>
           </div>
 
