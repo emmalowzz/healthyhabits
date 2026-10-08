@@ -1,5 +1,6 @@
-import { MEALS_DATA, POD_LOCATIONS, COOKING_VS_KINETIC_FACTS } from '../data/mockData';
-import { Meal, PodLocation, DispenseTemperature } from '../types';
+import { MEALS_DATA, POD_LOCATIONS } from '../data/mockData';
+
+export const SMITHERY_ENDPOINT = 'https://mcp.smithery.ai/emmalowzz';
 
 export interface McpToolDefinition {
   name: string;
@@ -97,9 +98,74 @@ export const KINETIC_MCP_TOOLS: McpToolDefinition[] = [
   }
 ];
 
-export async function executeMcpTool(toolName: string, args: Record<string, any>): Promise<any> {
-  // Simulate low-latency asynchronous API / MCP execution
-  await new Promise((r) => setTimeout(r, 450));
+export async function checkApiHealth(): Promise<any> {
+  try {
+    const res = await fetch('/api/health');
+    if (res.ok) {
+      return await res.json();
+    }
+    return { status: 'error', code: res.status, message: 'Health check returned non-200' };
+  } catch (err: any) {
+    return { status: 'offline', message: err.message };
+  }
+}
+
+export async function checkSmitheryMcpStatus(): Promise<any> {
+  try {
+    const res = await fetch('/api/mcp');
+    if (res.ok) {
+      return await res.json();
+    }
+    return { status: 'error', endpoint: SMITHERY_ENDPOINT, message: 'MCP status probe failed' };
+  } catch (err: any) {
+    return { status: 'offline', endpoint: SMITHERY_ENDPOINT, message: err.message };
+  }
+}
+
+export async function executeMcpTool(
+  toolName: string, 
+  args: Record<string, any>,
+  bearerToken?: string
+): Promise<any> {
+  // First attempt to call the full-stack /api/mcp route connecting to Smithery
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+    if (bearerToken) {
+      headers['Authorization'] = bearerToken.startsWith('Bearer ') ? bearerToken : `Bearer ${bearerToken}`;
+    }
+
+    const payload = {
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method: 'tools/call',
+      params: {
+        name: toolName,
+        arguments: args
+      }
+    };
+
+    const res = await fetch('/api/mcp', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        source: 'api_mcp_gateway',
+        gateway: 'Smithery.ai (https://mcp.smithery.ai/emmalowzz)',
+        response: data
+      };
+    }
+  } catch (err) {
+    console.warn('API MCP execution fallback to local engine:', err);
+  }
+
+  // Client-side execution fallback
+  await new Promise((r) => setTimeout(r, 300));
 
   switch (toolName) {
     case 'search_recovery_meals': {
@@ -110,13 +176,9 @@ export async function executeMcpTool(toolName: string, args: Record<string, any>
       if (args.min_protein_grams) {
         results = results.filter((m) => m.protein >= Number(args.min_protein_grams));
       }
-      if (args.sport_focus) {
-        results = results.filter((m) =>
-          m.bestForSport.some((s) => s.toLowerCase().includes(String(args.sport_focus).toLowerCase()))
-        );
-      }
       return {
         status: 'success',
+        source: 'local_kinetic_engine',
         matched_count: results.length,
         meals: results.map((m) => ({
           id: m.id,
@@ -125,9 +187,7 @@ export async function executeMcpTool(toolName: string, args: Record<string, any>
           protein_g: m.protein,
           calories: m.calories,
           hpb_certified: m.hpbCertified,
-          price_sgd: m.price,
-          hot_stock: m.hotStock,
-          chill_stock: m.chillStock
+          price_sgd: m.price
         }))
       };
     }
@@ -137,22 +197,14 @@ export async function executeMcpTool(toolName: string, args: Record<string, any>
       if (args.zone) {
         pods = pods.filter((p) => p.zone === args.zone);
       }
-      if (args.requires_hot_ready) {
-        pods = pods.filter((p) => p.hotStockTotal > 0);
-      }
       return {
         status: 'success',
-        network: 'Singapore ActiveSG & MRT Pod Fleet',
+        source: 'local_kinetic_engine',
         pods_count: pods.length,
-        telemetry_timestamp: new Date().toISOString(),
         pods: pods.map((p) => ({
           pod_id: p.id,
           name: p.name,
           type: p.type,
-          address: p.address,
-          walk_mins: p.distanceMinutesWalk,
-          hot_chambers_ready: p.hotStockTotal,
-          chilled_chambers_ready: p.chillStockTotal,
           hot_temp_celsius: p.chamberTempHot,
           chill_temp_celsius: p.chamberTempChill,
           status: p.status
@@ -161,46 +213,29 @@ export async function executeMcpTool(toolName: string, args: Record<string, any>
     }
 
     case 'reserve_smart_locker': {
-      const meal = MEALS_DATA.find((m) => m.id === args.meal_id) || MEALS_DATA[0];
-      const pod = POD_LOCATIONS.find((p) => p.id === args.pod_id) || POD_LOCATIONS[0];
       const chamberNumber = `BAY-${Math.floor(Math.random() * 8) + 1}0${Math.floor(Math.random() * 4) + 1}`;
       const reservationId = `KF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       return {
         status: 'confirmed',
+        source: 'local_kinetic_engine',
         reservation_id: reservationId,
-        pod_name: pod.name,
         chamber_bay: chamberNumber,
         dispense_mode: args.temperature === 'hot' ? 'HOT_DISPENSE_65C' : 'TAKE_HOME_CHILL_3C',
-        meal_name: meal.name,
-        protein_guarantee: `${meal.protein}g`,
-        access_qr_payload: `kf://unlock/${reservationId}/${chamberNumber}`,
-        holding_window_minutes: 45,
-        instructions: args.temperature === 'hot'
-          ? 'Proceed to pod screen or scan QR code. Chamber door will unlock immediately at 65°C.'
-          : 'Proceed to pod screen. Chilled tray will unlock for take-home transport.'
+        access_qr_payload: `kf://unlock/${reservationId}/${chamberNumber}`
       };
     }
 
     case 'calculate_cooking_opportunity_cost': {
       const meals = Math.max(1, Number(args.meals_per_week) || 5);
-      const hourlyRate = Number(args.hourly_rate_sgd) || 45;
-
-      const groceryPrepMinutesPerMeal = 45; // shopping + chopping + cooking + cleaning
-      const totalCookingHoursMonth = Math.round((meals * groceryPrepMinutesPerMeal * 4.3) / 60);
-      const wastedGroceriesMonth = Math.round(meals * 3.5 * 4.3); // spoilage
-      const timeValueSavedMonth = Math.round(totalCookingHoursMonth * hourlyRate);
+      const totalCookingHoursMonth = Math.round((meals * 50 * 4.3) / 60);
 
       return {
         status: 'success',
+        source: 'local_kinetic_engine',
         weekly_meals: meals,
         monthly_time_lost_cooking_hours: totalCookingHoursMonth,
-        monthly_kinetic_time_hours: 0.5,
-        monthly_hours_freed_up: totalCookingHoursMonth,
-        monthly_grocery_waste_saved_sgd: wastedGroceriesMonth,
-        economic_value_of_time_saved_sgd: timeValueSavedMonth,
-        extra_sleep_minutes_per_day: Math.round((totalCookingHoursMonth * 60) / 30),
-        conclusion: `Using Kinetic Fuel returns ${totalCookingHoursMonth} productive hours every month back to your training and sleep schedule.`
+        extra_sleep_minutes_per_day: Math.round((totalCookingHoursMonth * 60) / 30)
       };
     }
 
