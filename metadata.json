@@ -1,0 +1,6 @@
+{
+  "name": "Kinetic Fuel",
+  "description": "Nutrient-engineered sports recovery meals and automated smart hot/cold locker vending network across Singapore gyms and transit hubs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
